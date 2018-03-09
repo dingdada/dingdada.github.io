@@ -88,43 +88,21 @@
 <li>安装docker  自行google    </li>
 <li>docker中安装golang, docker pull golang:latest，可以自己定义版本</li>
 <li>docker中安装mysql, nginx镜像，命令同上</li>
-<li>定制自己的golang镜像，因为想借助于beego这个框架来搭建web应用，所以Dockerfile文件如下：<br><pre><code><br>FROM golang   <h1 id="Install-beego-and-the-bee-dev-tool"><a href="#Install-beego-and-the-bee-dev-tool" class="headerlink" title="Install beego and the bee dev tool"></a>Install beego and the bee dev tool</h1>RUN go get github.com/astaxie/beego<br> &amp;&amp; go get github.com/beego/bee<br> &amp;&amp; go get github.com/go-sql-driver/mysql    <h1 id="Expose-the-application-on-port-8080"><a href="#Expose-the-application-on-port-8080" class="headerlink" title="Expose the application on port 8080"></a>Expose the application on port 8080</h1>EXPOSE 8080    <h1 id="Set-the-entry-point-of-the-container-to-the-bee-command-that-runs-the-application-and-watches-for-changes"><a href="#Set-the-entry-point-of-the-container-to-the-bee-command-that-runs-the-application-and-watches-for-changes" class="headerlink" title="Set the entry point of the container to the bee command that runs the application and watches for changes"></a>Set the entry point of the container to the bee command that runs the application and watches for changes</h1>CMD [“bee”, “run”]<br></code> </pre><br>这个file主要做了三件事情，安装beego和mysql相关，暴露接口以及启动应用并监听改变。<br>然后在dockerfile所在目录运行<br> <code>docker build -t &#39;your-image-name&#39; // 我取名叫supplier，下文有用到</code><br>至此，准备工作做完了，接下来我们借助于docker-compose来启动镜像对应的container，以及关联container。<br>步骤如下：    </li>
-<li>新建一个网络环境，供接下来的容器使用<br> <code>docker network create -d bridge custom</code>    </li>
-<li>新建mysql容器，并启动，因为beego镜像的构建文件中最后一步启动应用了，所以需要mysql先启动起来，下面是mysql对应的docker-compose.yml<br><pre><code><br>version: “3”<br>services:<br> mysql:<pre><code>image: mysql:5.5
-</code></pre> environment:<pre><code>- MYSQL_ROOT_PASSWORD=root
-- MYSQL_DATABASE=supplier
-</code></pre> networks:<pre><code>- custom&lt;br/&gt;
-</code></pre>networks:<br><br> custom:<br><pre><code>external: true&lt;br/&gt;
-</code></pre></code></pre><br>这里面使用了mysql5.5版本的镜像，通过environment设置了密码和使用的数据库，同时指定了使用的网络<br>在所在目录运行<code>docker-compose up</code>即可    </li>
-<li>建立nginx和golang的容器<br><pre><code><br>version: “3”<br>services:<br> web:<pre><code>image: nginx:stable
-</code></pre> volumes:<pre><code>- /Users/didi/Documents/supplier/nginx:/etc/nginx/conf.d:ro
-- /Users/didi/Documents/supplier/project:/etc/nginx/html
-</code></pre> ports:<pre><code>- 8666:80
-</code></pre> command: /bin/bash -c “nginx -g ‘daemon off;’”<br> links:<pre><code>- gosupplier
-</code></pre> networks:<pre><code>- custom
-</code></pre> gosupplier:<pre><code>image: supplier:latest
-volumes:
-    - /Users/didi/Documents/supplier/project:/go/src/supplier
-ports:
-    - 8777:8080
-working_dir: /go/src/supplier
-</code></pre> external_links:<pre><code>- mysql
-</code></pre> networks:<pre><code>- custom
-</code></pre>networks:<br> custom:<pre><code>external: true
-</code></pre></code></pre><br>同样这个文件启动了nginx和golang的容器，相当于应用已经启动了，同时使用了外部容器mysql，就是我们刚刚启动的mysql容器，为了保证容器之间能够ping到，所以使用了同样的网络custom。</li>
+<li>定制自己的golang镜像，因为想借助于beego这个框架来搭建web应用，所以Dockerfile文件如下：<br><pre><code><br>FROM golang<br># Install beego and the bee dev tool<br>RUN go get github.com/astaxie/beego<br> &amp;&amp; go get github.com/beego/bee<br> &amp;&amp; go get github.com/go-sql-driver/mysql<br># Expose the application on port 8080<br>EXPOSE 8080<br># Set the entry point of the container to the bee command that runs the application and watches for changes<br>CMD [“bee”, “run”]<br></code> </pre><br>这个file主要做了三件事情，安装beego和mysql相关，暴露接口以及启动应用并监听改变。<br>然后在dockerfile所在目录运行<br> <code>docker build -t &#39;your-image-name&#39; // 我取名叫supplier，下文有用到</code><br>至此，准备工作做完了，接下来我们借助于docker-compose来启动镜像对应的container，以及关联container。<br>步骤如下：    <ol>
+<li>新建一个网络环境，供接下来的容器使用<br><code>docker network create -d bridge custom</code>    </li>
+<li>新建mysql容器，并启动，因为beego镜像的构建文件中最后一步启动应用了，所以需要mysql先启动起来，下面是mysql对应的docker-compose.yml<br><pre><code><br>version: “3”<br>services:<br>mysql:<br> image: mysql:5.5<br>environment:<br> - MYSQL_ROOT_PASSWORD=root<br> - MYSQL_DATABASE=supplier<br>networks:<br> - custom<br>networks:<br>custom:<br> external: true<br></code></pre><br>这里面使用了mysql5.5版本的镜像，通过environment设置了密码和使用的数据库，同时指定了使用的网络<br>在所在目录运行<code>docker-compose up</code>即可    </li>
+<li>建立nginx和golang的容器<br><pre><code><br>version: “3”<br>services:<br>web:<br> image: nginx:stable<br>volumes:<br> - /Users/didi/Documents/supplier/nginx:/etc/nginx/conf.d:ro<br> - /Users/didi/Documents/supplier/project:/etc/nginx/html<br>ports:<br> - 8666:80<br>command: /bin/bash -c “nginx -g ‘daemon off;’”<br>links:<br> - gosupplier<br>networks:<br> - custom<br>gosupplier:<br> image: supplier:latest<br> volumes:<br>   - /Users/didi/Documents/supplier/project:/go/src/supplier<br> ports:<br>   - 8777:8080<br> working_dir: /go/src/supplier<br>external_links:<br>- mysql<br>networks:<br>- custom<br>networks:<br>custom:<br> external: true<br></code></pre><br>同样这个文件启动了nginx和golang的容器，相当于应用已经启动了，同时使用了外部容器mysql，就是我们刚刚启动的mysql容器，为了保证容器之间能够ping到，所以使用了同样的网络custom。</li>
+</ol>
+</li>
 </ol>
 <p>至此环境就算搭建完成了，我们可以通过localhost:8666 来访问，因为我把本机的8666端口映射到docker中nginx容器的80端口了。<br>在项目文件中，我们可以借助于beego的官方文档 <a href="https://beego.me/docs/intro/" target="_blank" rel="external">https://beego.me/docs/intro/</a> 来构建目录和使用，默认会有一个main.go作为入口文件，有一个main函数作为入口函数，这是目录。    </p>
 <p><pre><code><br>├── conf<br>│   └── app.conf<br>├── controllers<br>│   ├── admin<br>│   └── default.go<br>├── main.go<br>├── models<br>│   └── models.go<br>├── static<br>│   ├── css<br>│   ├── ico<br>│   ├── img<br>│   └── js<br>└── views<br>    ├── admin<br>    └── index.tpl<br></code></pre><br>beego有集成mysql数据库，可以借助于他的orm来进行连接，以及相关的CRUD操作，可以在init函数里面注册driver，和数据库，以及model。这里面的mysql就是刚刚依赖的容器名字，只有这样，才能保证能够找到。    </p>
-<p><pre><code><br>func init() {<br>    orm.RegisterDriver(“mysql”, orm.DRMySQL)</code></pre></p>
-<pre><code>orm.RegisterDataBase(&quot;default&quot;, &quot;mysql&quot;, &quot;root:root@(mysql:3306)/supplier?charset=utf8&quot;)
-
-    orm.RegisterModel(new(User))
-</code></pre><p>}<br><br>我研究的有限，只是初步跑通，后面继续。</p>
+<p><pre><code><br>func init() {<br>    orm.RegisterDriver(“mysql”, orm.DRMySQL)<br>    orm.RegisterDataBase(“default”, “mysql”, “root:root@(mysql:3306)/supplier?charset=utf8”)<br>    orm.RegisterModel(new(User))<br>}<br></code></pre><br>我研究的有限，只是初步跑通，后面继续。</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://dingdada.github.io/2018/03/09/初识go/" data-id="cjejlkwfu0001xrtfyig76ont" class="article-share-link">Partager</a>
+      <a data-url="https://dingdada.github.io/2018/03/09/初识go/" data-id="cjejlt8ad0001z1tf1ju9gu4o" class="article-share-link">Partager</a>
       
       
     </footer>
@@ -161,7 +139,7 @@ working_dir: /go/src/supplier
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://dingdada.github.io/2017/06/06/写在第一篇/" data-id="cjejlkwfo0000xrtf9e4bm0if" class="article-share-link">Partager</a>
+      <a data-url="https://dingdada.github.io/2017/06/06/写在第一篇/" data-id="cjejlt8a80000z1tf7qsu3nko" class="article-share-link">Partager</a>
       
       
     </footer>
